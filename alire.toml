@@ -1,0 +1,12 @@
+name = "zode5"
+description = ""
+version = "0.1.0-dev"
+
+authors = ["Fisher Lyon"]
+maintainers = ["Fisher Lyon <fwlyon@calpoly.edu>"]
+maintainers-logins = ["fisherlyon"]
+licenses = "MIT OR Apache-2.0 WITH LLVM-exception"
+website = ""
+tags = []
+
+executables = ["zode5"]
