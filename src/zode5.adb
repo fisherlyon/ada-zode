@@ -13,6 +13,43 @@ procedure Zode5 is
 
    type ExprC_Acc is access all ExprC;
 
+   type Value_Kind is (NumV, BoolV, StrV, CloV, PrimV);
+
+   type Value;
+
+   type Value_Acc is access all Value;
+
+   type Binding is record
+      Name : Unbounded_String;
+      Val : Value_Acc;
+   end record;
+
+   type EnvNode;
+
+   type EnvNode_Acc is access all EnvNode;
+
+   type EnvNode is record
+      Content : Value_Acc;
+      Next : EnvNode_Acc;
+   end record;
+
+   type Value (Kind : Value_Kind) is record
+      case Kind is
+         when NumV =>
+            Val : Float;
+         when BoolV =>
+            Bool : Boolean;
+         when StrV =>
+            Str : Unbounded_String;
+         when CloV =>
+            Param : Unbounded_String;
+            Bod : ExprC_Acc;
+            Env : EnvNode_Acc;
+         when PrimV =>
+            Op : Unbounded_String;
+      end case;
+   end record;
+
    type ExprC (Kind : ExprC_Kind) is record
       case Kind is
          when NumC =>
