@@ -13,7 +13,7 @@ procedure Zode5 is
 
    type ExprC_Acc is access all ExprC;
 
-   type Value_Kind is (NumV, BoolV, StrV, CloV, PrimV);
+   type Value_kind is (NumV, BoolV, StrV, CLoV, PrimV);
 
    type Value;
 
@@ -39,7 +39,7 @@ procedure Zode5 is
             Val : Float;
          when BoolV =>
             Bool : Boolean;
-         when StrV =>
+         when strV => 
             Str : Unbounded_String;
          when CloV =>
             Param : Unbounded_String;
