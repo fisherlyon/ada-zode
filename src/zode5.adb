@@ -133,7 +133,7 @@ begin
    ----------------
    -- Test Cases --
    ----------------
-   
+
    declare
       Lookup_Val : Value_Acc;
    begin
@@ -153,5 +153,12 @@ begin
       Lookup_Val := Lookup (Strify ("nice"), Envr_Ex'Access);
       Assert (Lookup_Val.Kind = NumV);
       Assert (Lookup_Val.Val = 6.9);
+      begin
+         Lookup_Val := Lookup (Strify ("missing"), Envr_Ex'Access);
+         Assert (False);
+      exception
+         when Constraint_Error =>
+            Assert (True);
+      end;
    end;
 end Zode5;
