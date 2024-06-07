@@ -97,16 +97,14 @@ procedure Zode5 is
    end Extend_Env;
 
    --  Array of Primops, without '+'
-   type Primops is array (1 .. 8) of Unbounded_String;
+   type Primops is array (1 .. 6) of Unbounded_String;
 
-   Primops_Array : Primops :=
+   Primops_Array : constant Primops :=
       (Strify ("-"),
       Strify ("*"),
       Strify ("/"),
       Strify ("<="),
       Strify ("equal?"),
-      Strify ("true"),
-      Strify ("false"),
       Strify ("error"));
 
    --  Creates the Top Level Environment
@@ -125,6 +123,10 @@ procedure Zode5 is
                Primops_Array (J), new Value'(Kind => PrimV,
                   Op => Primops_Array (J)));
          end loop;
+         TLE := Extend_Env (TLE, Strify ("true"),
+             new Value'(Kind => BoolV, Bool => True));
+         TLE := Extend_Env (TLE, Strify ("false"),
+             new Value'(Kind => BoolV, Bool => False));
          return TLE;
       end;
    end Create_TLE;
@@ -142,6 +144,7 @@ procedure Zode5 is
             end if;
             Cur := Cur.Next;
          end loop;
+         Put_Line ("variable not found: " & To_String (Id));
          raise Constraint_Error;
       end;
    end Lookup;
@@ -276,5 +279,8 @@ begin
             Env => Envr_Ex)) = "#<procedure>");
       Assert (Serialize
          (new Value'(Kind => PrimV, Op => Strify ("+"))) = "#<primop>");
+
+      --  Top Interp tests
+      Put_Line (Top_Interp (new ExprC'(Kind => IdC, Id => Strify ("true"))));
    end;
 end Zode5;
