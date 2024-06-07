@@ -44,6 +44,7 @@ procedure Zode5 is
             Str : Unbounded_String;
          when CloV =>
             Param : Unbounded_String;
+            
             Bod : ExprC_Acc;
             Env : EnvNode_Acc;
          when PrimV =>
@@ -69,6 +70,7 @@ procedure Zode5 is
          when AppC =>
             Fun : ExprC_Acc;
             Arg : ExprC_Acc;
+            Arg2 : ExprC_Acc;
       end case;
    end record;
 
@@ -135,6 +137,7 @@ procedure Zode5 is
    function Lookup
       (Id : Unbounded_String; Env : EnvNode_Acc) return Value_Acc is
    begin
+
       declare
          Cur : EnvNode_Acc := Env;
       begin
@@ -149,10 +152,28 @@ procedure Zode5 is
       end;
    end Lookup;
 
+   -- Evaluates PrimV
+   function Eval (Op: Unbounded_String ; l : Value_Acc ; r : Value_Acc) 
+      return Value_Acc is
+   begin
+      if Op = "+" then
+         return new Value'(Kind => NumV, Val => (l.Val + r.Val));
+      elsif Op = "-" then
+         return new Value'(Kind => NumV, Val => (l.Val - r.Val));
+      elsif Op = "*" then
+         return new Value'(Kind => NumV, Val => (l.Val * r.Val));
+      elsif Op = "/" then
+         return new Value'(Kind => NumV, Val => (l.Val / r.Val));
+      else
+         raise Program_Error; 
+      end if;
+   end Eval;
+
    --  Interprets an ExprC
    function Interp (Expr : ExprC_Acc; Env : EnvNode_Acc)
       return Value_Acc is
    begin
+
       case Expr.Kind is
          when NumC =>
             return new Value'(Kind => NumV, Val => Expr.Val);
@@ -176,14 +197,36 @@ procedure Zode5 is
                Bod => Expr.Bod,
                Env => Env);
          when AppC =>
+
             declare
+
                Fun_Val : Value_Acc := Interp (Expr.Fun, Env);
-               Arg_Val : Value_Acc := Interp (Expr.Arg, Env);
-               Env2 : EnvNode_Acc :=
-                  Extend_Env (Env, Fun_Val.Param, Arg_Val);
-            begin
-               return Interp (Fun_Val.Bod, Env2);
-            end;
+               Arg_Val1 : Value_Acc := Interp (Expr.Arg, Env);
+               Arg_Val2 : Value_Acc := Interp (Expr.Arg2, Env);
+
+               
+               begin
+                  case Fun_Val.kind is
+                     when CloV =>
+                        declare
+                           Env2 : EnvNode_Acc :=
+                           Extend_Env (Env, Fun_Val.Param, Arg_Val1);
+
+                        begin
+                           return Interp (Fun_Val.Bod, Env2);
+                        end;
+                     when PrimV =>
+                        return Eval (Fun_Val.Op, Arg_Val1, Arg_Val2);
+                     when NumV =>
+                        raise Program_Error; 
+                     when BoolV =>
+                        raise Program_Error; 
+                     when StrV =>
+                        raise Program_Error; 
+                     
+                  end case;
+
+               end;
       end case;
    end Interp;
 
@@ -280,7 +323,29 @@ begin
       Assert (Serialize
          (new Value'(Kind => PrimV, Op => Strify ("+"))) = "#<primop>");
 
+      -- Eval tests
+      
+      Assert (Eval
+         (Strify ("+"), new Value'(Kind => NumV, Val => 2.0), 
+         new Value'(Kind => NumV, Val => 2.0)).Val = 4.0);
+      Assert (Eval
+         (Strify ("-"), new Value'(Kind => NumV, Val => 7.0), 
+         new Value'(Kind => NumV, Val => 2.0)).Val = 5.0);
+      Assert (Eval
+         (Strify ("*"), new Value'(Kind => NumV, Val => 3.0), 
+         new Value'(Kind => NumV, Val => 2.0)).Val = 6.0);
+      Assert (Eval
+         (Strify ("/"), new Value'(Kind => NumV, Val => 6.0), 
+         new Value'(Kind => NumV, Val => 2.0)).Val = 3.0);
+
+      
       --  Top Interp tests
-      Put_Line (Top_Interp (new ExprC'(Kind => IdC, Id => Strify ("true"))));
+      Assert (Top_Interp (new ExprC'(Kind => IdC, Id => Strify ("true"))) = "true");
+
+      Put_Line (Top_Interp (new ExprC'(Kind => AppC, 
+      Fun => (new ExprC'(Kind => IdC, Id => (Strify ("+")))), 
+      Arg => (new ExprC'(Kind => NumC, Val => 3.0)),
+      Arg2 => (new ExprC'(Kind => NumC, Val => 3.0)))));
+
    end;
 end Zode5;
