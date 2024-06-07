@@ -370,6 +370,12 @@ begin
       Assert (Eval
          (Strify ("/"), new Value'(Kind => NumV, Val => 6.0),
          new Value'(Kind => NumV, Val => 2.0)).Val = 3.0);
+      Assert (Eval
+         (Strify ("<="), new Value'(Kind => NumV, Val => 6.0),
+         new Value'(Kind => NumV, Val => 6.0)).Bool = True);
+      Assert (Eval
+         (Strify ("equal?"), new Value'(Kind => NumV, Val => 6.0),
+         new Value'(Kind => NumV, Val => 6.0)).Bool = True);
 
       --  Top Interp tests
       Assert (Top_Interp
