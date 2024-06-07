@@ -280,6 +280,33 @@ procedure Zode5 is
                Arg1 => new ExprC'(Kind => IdC, Id => Strify ("x")),
                Arg2 => new ExprC'(Kind => IdC, Id => Strify ("y"))));
 
+   LamC_Ex2 : constant ExprC_Acc :=
+      new ExprC'(Kind => LamC,
+         Param1 => Strify ("n"),
+         Param2 => Strify ("m"),
+         Bod =>
+            new ExprC'(Kind => IfC,
+               Te => new ExprC'(Kind => AppC,
+                  Fun => new ExprC'(Kind => IdC,
+                     Id => Strify ("equal?")),
+                  Arg1 => new ExprC'(Kind => IdC,
+                     Id => Strify ("n")),
+                  Arg2 => new ExprC'(Kind => IdC,
+                     Id => Strify ("m"))),
+               Th => new ExprC'(Kind => AppC,
+                  Fun => new ExprC'(Kind => IdC,
+                     Id => Strify ("error")),
+                  Arg1 => new ExprC'(Kind => StrC,
+                     Str => Strify ("null")),
+                  Arg2 => new ExprC'(Kind => StrC,
+                     Str => Strify ("null"))),
+               El => new ExprC'(Kind => AppC,
+                  Fun => LamC_Ex1,
+                  Arg1 => new ExprC'(Kind => IdC,
+                     Id => Strify ("n")),
+                  Arg2 => new ExprC'(Kind => IdC,
+                     Id => Strify ("m")))));
+
 begin
 
    ----------------
@@ -289,6 +316,7 @@ begin
    declare
       Lookup_Val : Value_Acc;
       Extended_Env : EnvNode_Acc;
+      Result : Unbounded_String;
    begin
       --  Lookup tests
       Lookup_Val := Lookup (Strify ("nice"), Envr_Ex);
@@ -364,5 +392,20 @@ begin
          Arg1 => (new ExprC'(Kind => NumC, Val => 0.0)),
          Arg2 => (new ExprC'(Kind => NumC, Val => 5.0)))) = "true");
 
+      Assert (Top_Interp (new ExprC'(Kind => AppC,
+            Fun => LamC_Ex2,
+            Arg1 => (new ExprC'(Kind => NumC, Val => 4.0)),
+            Arg2 => (new ExprC'(Kind => NumC, Val => 5.0)))) = "true");
+
+      begin
+         Result := Strify (Top_Interp (new ExprC'(Kind => AppC,
+            Fun => LamC_Ex2,
+            Arg1 => (new ExprC'(Kind => NumC, Val => 5.0)),
+            Arg2 => (new ExprC'(Kind => NumC, Val => 5.0)))));
+            Assert (False);
+      exception
+         when Program_Error =>
+            Assert (True);
+      end;
    end;
 end Zode5;
