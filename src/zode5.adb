@@ -1,4 +1,3 @@
-with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Assertions; use Ada.Assertions;
 
@@ -89,6 +88,64 @@ procedure Zode5 is
       end;
    end Lookup;
 
+   --  Extends an environment
+   function Extend_Env
+      (Env : EnvNode_Acc; Param : Unbounded_String; Val : Value_Acc)
+         return EnvNode_Acc is
+   begin
+      declare
+         Cur : EnvNode_Acc := Env;
+      begin
+         while Cur.Next /= null loop
+            Cur := Cur.Next;
+         end loop;
+         Cur.Next := new EnvNode'(Content =>
+            Binding'(Name => Param, Val => Val),
+         Next => null);
+      end;
+      return Env;
+   end Extend_Env;
+
+   --  Interprets an ExprC
+   function Interp (Expr : ExprC_Acc; Env : EnvNode_Acc)
+      return Value_Acc is
+   begin
+      case Expr.Kind is
+         when NumC =>
+            return new Value'(Kind => NumV, Val => Expr.Val);
+         when IdC =>
+            return Lookup (Expr.Id, Env);
+         when StrC =>
+            return new Value'(Kind => StrV, Str => Expr.Str);
+         when IfC =>
+            declare
+               Interped_Test : Value_Acc := Interp (Expr.Te, Env);
+            begin
+               if Interped_Test.Bool = True then
+                  return Interp (Expr.Th, Env);
+               else
+                  return Interp (Expr.El, Env);
+               end if;
+            end;
+         when LamC =>
+            return new Value'(Kind => CloV,
+               Param => Expr.Param,
+               Bod => Expr.Bod,
+               Env => Env);
+         when AppC =>
+            declare
+               Fun_Val : Value_Acc := Interp (Expr.Fun, Env);
+               Arg_Val : Value_Acc := Interp (Expr.Arg, Env);
+               Env2 : EnvNode_Acc :=
+                  Extend_Env (Env, Fun_Val.Param, Arg_Val);
+            begin
+               return Interp (Fun_Val.Bod, Env2);
+            end;
+      end case;
+   end Interp;
+
+   --  Interprets and Serializes!
+
    --  Takes a string and converts it to an unbounded string
    function Strify (S : String) return Unbounded_String is
    begin
@@ -99,27 +156,6 @@ procedure Zode5 is
    -- Example Instances --
    -----------------------
 
-   NumC_Ex : constant ExprC :=
-      ExprC'(Kind => NumC,
-         Val => 4.0);
-
-   IdC_Ex : constant ExprC :=
-      ExprC'(Kind => IdC,
-         Id => Strify ("x"));
-
-   StrC_Ex : constant ExprC :=
-      ExprC'(Kind => StrC,
-         Str => Strify ("Hello!"));
-
-   IfC_Ex : constant ExprC :=
-      ExprC'(Kind => IfC,
-         Te => new ExprC'(Kind => IdC,
-            Id => Strify ("true")),
-         Th => new ExprC'(Kind => StrC,
-            Str => Strify ("good")),
-         El => new ExprC'(Kind => StrC,
-            Str => Strify ("bad")));
-
    Envr_Ex : aliased EnvNode :=
       EnvNode'(Content =>
          Binding'(Name => Strify ("nice"),
@@ -129,6 +165,12 @@ procedure Zode5 is
                Val => new Value'(Kind => StrV, Str => Strify ("cool"))),
             Next => null));
 
+   Envr_Ex2 : aliased EnvNode :=
+      EnvNode'(Content =>
+         Binding'(Name => Strify ("x"),
+            Val => new Value'(Kind => NumV, Val => 1.0)),
+         Next => null);
+
 begin
    ----------------
    -- Test Cases --
@@ -136,20 +178,10 @@ begin
 
    declare
       Lookup_Val : Value_Acc;
+      Extended_Env : EnvNode_Acc;
    begin
-      Assert (NumC_Ex.Kind = NumC);
-      Assert (NumC_Ex.Val = 4.0);
-      Assert (IdC_Ex.Kind = IdC);
-      Assert (IdC_Ex.Id = Strify ("x"));
-      Assert (StrC_Ex.Kind = StrC);
-      Assert (StrC_Ex.Str = Strify ("Hello!"));
-      Assert (IfC_Ex.Kind = IfC);
-      Assert (IfC_Ex.Te.Kind = IdC);
-      Assert (IfC_Ex.Th.Kind = StrC);
-      Assert (IfC_Ex.El.Kind = StrC);
-      Assert (IfC_Ex.Te.Id = Strify ("true"));
-      Assert (IfC_Ex.Th.Str = Strify ("good"));
-      Assert (IfC_Ex.El.Str = Strify ("bad"));
+
+      --  Lookup tests
       Lookup_Val := Lookup (Strify ("nice"), Envr_Ex'Access);
       Assert (Lookup_Val.Kind = NumV);
       Assert (Lookup_Val.Val = 6.9);
@@ -160,5 +192,14 @@ begin
          when Constraint_Error =>
             Assert (True);
       end;
+
+      --  Extend-Env tests
+      Extended_Env :=
+         Extend_Env (Envr_Ex2'Access, Strify ("y"),
+            new Value'(Kind => NumV, Val => 2.0));
+      Assert (Extended_Env.Content.Name = Strify ("x"));
+      Assert (Extended_Env.Content.Val.Val = 1.0);
+      Assert (Extended_Env.Next.Content.Name = Strify ("y"));
+      Assert (Extended_Env.Next.Content.Val.Val = 2.0);
    end;
 end Zode5;
