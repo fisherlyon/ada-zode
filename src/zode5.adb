@@ -1,3 +1,4 @@
+with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Assertions; use Ada.Assertions;
 
@@ -13,7 +14,7 @@ procedure Zode5 is
 
    type ExprC_Acc is access all ExprC;
 
-   type Value_kind is (NumV, BoolV, StrV, CloV, PrimV);
+   type Value_Kind is (NumV, BoolV, StrV, CloV, PrimV);
 
    type Value;
 
@@ -39,7 +40,7 @@ procedure Zode5 is
             Val : Float;
          when BoolV =>
             Bool : Boolean;
-         when strV => 
+         when StrV =>
             Str : Unbounded_String;
          when CloV =>
             Param : Unbounded_String;
@@ -71,22 +72,11 @@ procedure Zode5 is
       end case;
    end record;
 
-   --  Looks up an identifier in a environment and rerturns its value
-   function Lookup
-      (Id : Unbounded_String; Env : EnvNode_Acc) return Value_Acc is
+   --  Takes a string and converts it to an unbounded string
+   function Strify (S : String) return Unbounded_String is
    begin
-      declare
-         Cur : EnvNode_Acc := Env;
-      begin
-         while Cur /= null loop
-            if Id = Cur.Content.Name then
-               return Cur.Content.Val;
-            end if;
-            Cur := Cur.Next;
-         end loop;
-         raise Constraint_Error;
-      end;
-   end Lookup;
+      return To_Unbounded_String (S);
+   end Strify;
 
    --  Extends an environment
    function Extend_Env
@@ -105,6 +95,56 @@ procedure Zode5 is
       end;
       return Env;
    end Extend_Env;
+
+   --  Array of Primops, without '+'
+   type Primops is array (1 .. 8) of Unbounded_String;
+
+   Primops_Array : Primops :=
+      (Strify ("-"),
+      Strify ("*"),
+      Strify ("/"),
+      Strify ("<="),
+      Strify ("equal?"),
+      Strify ("true"),
+      Strify ("false"),
+      Strify ("error"));
+
+   --  Creates the Top Level Environment
+   function Create_TLE return EnvNode_Acc is
+   begin
+      declare
+         TLE : EnvNode_Acc :=
+            new EnvNode'(Content =>
+               Binding'(Name => Strify ("+"),
+               Val =>
+                  new Value'(Kind => PrimV, Op => Strify ("+"))),
+            Next => null);
+      begin
+         for J in Primops_Array'Range loop
+            TLE := Extend_Env (TLE,
+               Primops_Array (J), new Value'(Kind => PrimV,
+                  Op => Primops_Array (J)));
+         end loop;
+         return TLE;
+      end;
+   end Create_TLE;
+
+   --  Looks up an identifier in a environment and rerturns its value
+   function Lookup
+      (Id : Unbounded_String; Env : EnvNode_Acc) return Value_Acc is
+   begin
+      declare
+         Cur : EnvNode_Acc := Env;
+      begin
+         while Cur /= null loop
+            if Id = Cur.Content.Name then
+               return Cur.Content.Val;
+            end if;
+            Cur := Cur.Next;
+         end loop;
+         raise Constraint_Error;
+      end;
+   end Lookup;
 
    --  Interprets an ExprC
    function Interp (Expr : ExprC_Acc; Env : EnvNode_Acc)
@@ -144,42 +184,42 @@ procedure Zode5 is
       end case;
    end Interp;
 
-   -- takes in a Value, returns its string representation
-   function serialize (Value : Value_Acc) 
+   --  Takes in a Value, returns its string representation
+   function Serialize (Value : Value_Acc)
       return String is
    begin
       case Value.Kind is
          when NumV =>
-            return Float'Image(Value.Val);
+            return Float'Image (Value.Val);
          when BoolV =>
             if Value.Bool then
-               return "True";
+               return "true";
             else
-               return "False";
+               return "false";
             end if;
          when StrV =>
-            return To_String(Value.Str);
+            return To_String (Value.Str);
          when CloV =>
             return "#<procedure>";
          when PrimV =>
             return "#<primop>";
       end case;
-   end serialize;
+   end Serialize;
 
    --  Interprets and Serializes!
-
-   --  Takes a string and converts it to an unbounded string
-   function Strify (S : String) return Unbounded_String is
+   function Top_Interp (Expr : ExprC_Acc)
+      return String is
    begin
-      return To_Unbounded_String (S);
-   end Strify;
+      return Serialize
+         (Interp (Expr, Create_TLE));
+   end Top_Interp;
 
    -----------------------
    -- Example Instances --
    -----------------------
 
-   Envr_Ex : aliased EnvNode :=
-      EnvNode'(Content =>
+   Envr_Ex : EnvNode_Acc :=
+      new EnvNode'(Content =>
          Binding'(Name => Strify ("nice"),
             Val => new Value'(Kind => NumV, Val => 6.9)),
          Next => new EnvNode'(Content =>
@@ -187,8 +227,8 @@ procedure Zode5 is
                Val => new Value'(Kind => StrV, Str => Strify ("cool"))),
             Next => null));
 
-   Envr_Ex2 : aliased EnvNode :=
-      EnvNode'(Content =>
+   Envr_Ex2 : EnvNode_Acc :=
+      new EnvNode'(Content =>
          Binding'(Name => Strify ("x"),
             Val => new Value'(Kind => NumV, Val => 1.0)),
          Next => null);
@@ -202,13 +242,12 @@ begin
       Lookup_Val : Value_Acc;
       Extended_Env : EnvNode_Acc;
    begin
-
       --  Lookup tests
-      Lookup_Val := Lookup (Strify ("nice"), Envr_Ex'Access);
+      Lookup_Val := Lookup (Strify ("nice"), Envr_Ex);
       Assert (Lookup_Val.Kind = NumV);
       Assert (Lookup_Val.Val = 6.9);
       begin
-         Lookup_Val := Lookup (Strify ("missing"), Envr_Ex'Access);
+         Lookup_Val := Lookup (Strify ("missing"), Envr_Ex);
          Assert (False);
       exception
          when Constraint_Error =>
@@ -217,11 +256,25 @@ begin
 
       --  Extend-Env tests
       Extended_Env :=
-         Extend_Env (Envr_Ex2'Access, Strify ("y"),
+         Extend_Env (Envr_Ex2, Strify ("y"),
             new Value'(Kind => NumV, Val => 2.0));
       Assert (Extended_Env.Content.Name = Strify ("x"));
       Assert (Extended_Env.Content.Val.Val = 1.0);
       Assert (Extended_Env.Next.Content.Name = Strify ("y"));
       Assert (Extended_Env.Next.Content.Val.Val = 2.0);
+
+      --  Serialize tests
+      Assert (Serialize
+         (new Value'(Kind => BoolV, Bool => True)) = "true");
+      Assert (Serialize
+         (new Value'(Kind => BoolV, Bool => False)) = "false");
+      Assert (Serialize
+         (new Value'(Kind => StrV, Str => Strify ("Hello"))) = "Hello");
+      Assert (Serialize
+         (new Value'(Kind => CloV, Param => Strify ("x"),
+            Bod => new ExprC'(Kind => NumC, Val => 4.0),
+            Env => Envr_Ex)) = "#<procedure>");
+      Assert (Serialize
+         (new Value'(Kind => PrimV, Op => Strify ("+"))) = "#<primop>");
    end;
 end Zode5;
