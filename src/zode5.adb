@@ -1,5 +1,6 @@
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
+with Ada.Assertions; use Ada.Assertions;
 
 procedure Zode5 is
 
@@ -29,7 +30,7 @@ procedure Zode5 is
    type EnvNode_Acc is access all EnvNode;
 
    type EnvNode is record
-      Content : Value_Acc;
+      Content : Binding;
       Next : EnvNode_Acc;
    end record;
 
@@ -71,6 +72,23 @@ procedure Zode5 is
       end case;
    end record;
 
+   --  Looks up an identifier in a environment and rerturns its value
+   function Lookup
+      (Id : Unbounded_String; Env : EnvNode_Acc) return Value_Acc is
+   begin
+      declare
+         Cur : EnvNode_Acc := Env;
+      begin
+         while Cur /= null loop
+            if Id = Cur.Content.Name then
+               return Cur.Content.Val;
+            end if;
+            Cur := Cur.Next;
+         end loop;
+         raise Constraint_Error;
+      end;
+   end Lookup;
+
    --  Takes a string and converts it to an unbounded string
    function Strify (S : String) return Unbounded_String is
    begin
@@ -102,11 +120,45 @@ procedure Zode5 is
          El => new ExprC'(Kind => StrC,
             Str => Strify ("bad")));
 
+   Envr_Ex : aliased EnvNode :=
+      EnvNode'(Content =>
+         Binding'(Name => Strify ("nice"),
+            Val => new Value'(Kind => NumV, Val => 6.9)),
+         Next => new EnvNode'(Content =>
+            Binding'(Name => Strify ("string"),
+               Val => new Value'(Kind => StrV, Str => Strify ("cool"))),
+            Next => null));
+
 begin
-   Put_Line ("Example NumC Value : " & Float'Image (NumC_Ex.Val));
-   Put_Line ("Example IdC Identifier : " & To_String (IdC_Ex.Id));
-   Put_Line ("Example StrC String : " & To_String (StrC_Ex.Str));
-   Put_Line ("Example IfC Test: " & To_String (IfC_Ex.Te.Id));
-   Put_Line ("Example IfC Then: " & To_String (IfC_Ex.Th.Str));
-   Put_Line ("Example IfC Else: " & To_String (IfC_Ex.El.Str));
+   ----------------
+   -- Test Cases --
+   ----------------
+
+   declare
+      Lookup_Val : Value_Acc;
+   begin
+      Assert (NumC_Ex.Kind = NumC);
+      Assert (NumC_Ex.Val = 4.0);
+      Assert (IdC_Ex.Kind = IdC);
+      Assert (IdC_Ex.Id = Strify ("x"));
+      Assert (StrC_Ex.Kind = StrC);
+      Assert (StrC_Ex.Str = Strify ("Hello!"));
+      Assert (IfC_Ex.Kind = IfC);
+      Assert (IfC_Ex.Te.Kind = IdC);
+      Assert (IfC_Ex.Th.Kind = StrC);
+      Assert (IfC_Ex.El.Kind = StrC);
+      Assert (IfC_Ex.Te.Id = Strify ("true"));
+      Assert (IfC_Ex.Th.Str = Strify ("good"));
+      Assert (IfC_Ex.El.Str = Strify ("bad"));
+      Lookup_Val := Lookup (Strify ("nice"), Envr_Ex'Access);
+      Assert (Lookup_Val.Kind = NumV);
+      Assert (Lookup_Val.Val = 6.9);
+      begin
+         Lookup_Val := Lookup (Strify ("missing"), Envr_Ex'Access);
+         Assert (False);
+      exception
+         when Constraint_Error =>
+            Assert (True);
+      end;
+   end;
 end Zode5;
