@@ -347,5 +347,10 @@ begin
       Arg => (new ExprC'(Kind => NumC, Val => 3.0)),
       Arg2 => (new ExprC'(Kind => NumC, Val => 3.0)))));
 
+      Put_Line (Top_Interp (new ExprC'(Kind => AppC, 
+      Fun => (new ExprC'(Kind => IdC, Id => (Strify ("*")))), 
+      Arg => (new ExprC'(Kind => NumC, Val => 2.0)),
+      Arg2 => (new ExprC'(Kind => NumC, Val => 3.0)))));
+
    end;
 end Zode5;
