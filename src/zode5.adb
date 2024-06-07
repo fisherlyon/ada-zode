@@ -13,7 +13,7 @@ procedure Zode5 is
 
    type ExprC_Acc is access all ExprC;
 
-   type Value_kind is (NumV, BoolV, StrV, CLoV, PrimV);
+   type Value_kind is (NumV, BoolV, StrV, CloV, PrimV);
 
    type Value;
 
@@ -143,6 +143,28 @@ procedure Zode5 is
             end;
       end case;
    end Interp;
+
+   -- takes in a Value, returns its string representation
+   function serialize (Value : Value_Acc) 
+      return String is
+   begin
+      case Value.Kind is
+         when NumV =>
+            return Float'Image(Value.Val);
+         when BoolV =>
+            if Value.Bool then
+               return "True";
+            else
+               return "False";
+            end if;
+         when StrV =>
+            return To_String(Value.Str);
+         when CloV =>
+            return "#<procedure>";
+         when PrimV =>
+            return "#<primop>";
+      end case;
+   end serialize;
 
    --  Interprets and Serializes!
 
